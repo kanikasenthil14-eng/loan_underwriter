@@ -41,15 +41,18 @@ def create_app():
     return app
 
 def _init_admin(app):
-    from app.models.user_model import UserModel
-    existing = mongo.db.users.find_one({'email': app.config['ADMIN_EMAIL']})
-    if not existing:
-        hashed = bcrypt.generate_password_hash(app.config['ADMIN_PASSWORD']).decode('utf-8')
-        mongo.db.users.insert_one({
-            'name': 'Admin User',
-            'email': app.config['ADMIN_EMAIL'],
-            'password': hashed,
-            'role': 'admin',
-            'mobile': '0000000000',
-            'created_at': __import__('datetime').datetime.utcnow()
-        })
+    try:
+        existing = mongo.db.users.find_one({'email': app.config['ADMIN_EMAIL']})
+        if not existing:
+            hashed = bcrypt.generate_password_hash(app.config['ADMIN_PASSWORD']).decode('utf-8')
+            mongo.db.users.insert_one({
+                'name': 'Admin User',
+                'email': app.config['ADMIN_EMAIL'],
+                'password': hashed,
+                'role': 'admin',
+                'mobile': '0000000000',
+                'created_at': __import__('datetime').datetime.utcnow()
+            })
+    except Exception:
+        # Allow the app to start even if MongoDB is unavailable in deployment.
+        return

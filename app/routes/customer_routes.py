@@ -18,6 +18,13 @@ def _save_application(app_doc):
         _FALLBACK_STORE.append(app_doc)
         return f"fallback-{len(_FALLBACK_STORE)}", str(exc)
 
+
+def _load_user_applications(user_id):
+    try:
+        return list(mongo.db.applications.find({'user_id': user_id}).sort('submitted_at', -1))
+    except Exception:
+        return [app for app in _FALLBACK_STORE if app.get('user_id') == user_id]
+
 customer_bp = Blueprint('customer', __name__)
 
 LOAN_TYPES = {
@@ -29,7 +36,7 @@ LOAN_TYPES = {
 @customer_bp.route('/dashboard')
 @login_required
 def dashboard():
-    apps = list(mongo.db.applications.find({'user_id': current_user.id}).sort('submitted_at', -1))
+    apps = _load_user_applications(current_user.id)
     stats = {
         'total': len(apps),
         'approved': sum(1 for a in apps if a.get('decision', {}).get('final_decision') == 'Approved'),
@@ -72,12 +79,18 @@ def apply():
                 enriched['status'] = 'processed'
                 enriched['updated_at'] = datetime.utcnow()
                 if mongo_error is None:
-                    update_data = {k: v for k, v in enriched.items() if k != '_id'}
-                    mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': update_data})
+                    try:
+                        update_data = {k: v for k, v in enriched.items() if k != '_id'}
+                        mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': update_data})
+                    except Exception:
+                        pass
                 flash('Application submitted and processed successfully!', 'success')
             except Exception as e:
                 if mongo_error is None:
-                    mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': {'status': 'error', 'error': str(e)}})
+                    try:
+                        mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': {'status': 'error', 'error': str(e)}})
+                    except Exception:
+                        pass
                 flash('Application submitted but processing encountered an issue. The application record was still created.', 'warning')
 
             return redirect(url_for('customer.view_application', app_id=str(app_id)))
