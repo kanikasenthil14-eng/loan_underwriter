@@ -10,7 +10,18 @@ from app.agents import (
     premium_calculation_agent,
     report_generation_agent
 )
-from app.ml.predictor import predict as ml_predict
+
+try:
+    from app.ml.predictor import predict as ml_predict
+except Exception:
+    def ml_predict(application_data, doc_score=80, fraud_score=0):
+        return {
+            'decision': 'Manual Review',
+            'confidence': 0.5,
+            'probabilities': {'Approved': 0.5, 'Rejected': 0.5},
+            'features_count': 0,
+            'model': 'Fallback'
+        }
 
 def run_pipeline(application_data):
     """
