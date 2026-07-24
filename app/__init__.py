@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
@@ -28,8 +29,11 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api')
 
-    import os
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+    @app.route('/healthz')
+    def healthz():
+        return {'status': 'ok'}, 200
 
     with app.app_context():
         _init_admin(app)

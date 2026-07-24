@@ -11,3 +11,4 @@ class Config:
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@kredpilot.com')
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Admin@123')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+    JSON_SORT_KEYS = False

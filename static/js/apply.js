@@ -101,21 +101,32 @@ function createToastContainer() {
     return c;
 }
 
-// Show loading modal on form submit
+// Show loading modal on form submit without blocking the request
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('applicationForm');
-    if (form) {
-        form.addEventListener('submit', (e) => {
-            const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
-            modal.show();
-            // Animate agent steps
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingModal = document.getElementById('loadingModal');
+
+    if (!form) return;
+
+    form.addEventListener('submit', () => {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+        }
+
+        if (loadingModal) {
+            loadingModal.classList.remove('d-none');
+            loadingModal.style.display = 'block';
             const steps = document.querySelectorAll('.agent-step');
             steps.forEach((step, i) => {
                 setTimeout(() => {
-                    step.querySelector('i').className = 'fas fa-check-circle text-success me-2';
-                    step.querySelector('span').style.color = '#22c55e';
+                    const icon = step.querySelector('i');
+                    const label = step.querySelector('span');
+                    if (icon) icon.className = 'fas fa-check-circle text-success me-2';
+                    if (label) label.style.color = '#22c55e';
                 }, (i + 1) * 800);
             });
-        });
-    }
+        }
+    });
 });

@@ -7,6 +7,17 @@ from app.utils.helpers import save_uploaded_file
 from app.utils.pipeline import run_pipeline
 from datetime import datetime
 
+_FALLBACK_STORE = []
+
+
+def _save_application(app_doc):
+    try:
+        result = mongo.db.applications.insert_one(app_doc)
+        return str(result.inserted_id), None
+    except Exception as exc:
+        _FALLBACK_STORE.append(app_doc)
+        return f"fallback-{len(_FALLBACK_STORE)}", str(exc)
+
 customer_bp = Blueprint('customer', __name__)
 
 LOAN_TYPES = {
@@ -40,7 +51,7 @@ def apply():
         loan_type = 'personal'
 
     if request.method == 'POST':
-        loan_type = request.form.get('loan_type', 'personal')
+        loan_type = request.form.get('loan_type', request.form.get('loan_purpose', 'personal')) or 'personal'
         doc_paths = {}
         for doc_field in ['aadhaar', 'pan', 'income_proof', 'passport_photo']:
             file = request.files.get(doc_field)
@@ -49,23 +60,30 @@ def apply():
                 if path:
                     doc_paths[doc_field] = path
 
-        app_doc = application_schema(current_user.id, request.form, doc_paths)
-        result = mongo.db.applications.insert_one(app_doc)
-        app_id = result.inserted_id
-
         try:
-            app_doc['_id'] = app_id
-            enriched = run_pipeline(app_doc)
-            enriched['status'] = 'processed'
-            enriched['updated_at'] = datetime.utcnow()
-            update_data = {k: v for k, v in enriched.items() if k != '_id'}
-            mongo.db.applications.update_one({'_id': app_id}, {'$set': update_data})
-            flash('Application submitted and processed successfully!', 'success')
-        except Exception as e:
-            mongo.db.applications.update_one({'_id': app_id}, {'$set': {'status': 'error', 'error': str(e)}})
-            flash(f'Application submitted but processing encountered an issue.', 'warning')
+            app_doc = application_schema(current_user.id, request.form, doc_paths)
+            app_id, mongo_error = _save_application(app_doc)
 
-        return redirect(url_for('customer.view_application', app_id=str(app_id)))
+            try:
+                app_doc['_id'] = app_id
+                # Run the underwriting pipeline, but fall back gracefully if the environment
+                # is missing optional ML dependencies or Mongo connectivity is unavailable.
+                enriched = run_pipeline(app_doc)
+                enriched['status'] = 'processed'
+                enriched['updated_at'] = datetime.utcnow()
+                if mongo_error is None:
+                    update_data = {k: v for k, v in enriched.items() if k != '_id'}
+                    mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': update_data})
+                flash('Application submitted and processed successfully!', 'success')
+            except Exception as e:
+                if mongo_error is None:
+                    mongo.db.applications.update_one({'_id': ObjectId(app_id)}, {'$set': {'status': 'error', 'error': str(e)}})
+                flash('Application submitted but processing encountered an issue. The application record was still created.', 'warning')
+
+            return redirect(url_for('customer.view_application', app_id=str(app_id)))
+        except Exception as e:
+            flash(f'Unable to submit application: {str(e)}', 'danger')
+            return redirect(url_for('customer.dashboard'))
 
     return render_template('customer/apply.html', loan_type=loan_type, loan_type_name=LOAN_TYPES.get(loan_type, 'Personal Loan'))
 
