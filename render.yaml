@@ -1,0 +1,41 @@
+# Render service manifest template. Replace placeholders with your values
+# 1) If you want Render to build from the GitHub repo, set `repo` and link
+#    the service in the Render dashboard (Render will build using the Dockerfile).
+# 2) If you prefer Render to pull an image from GHCR, set `dockerImage` to
+#    ghcr.io/<owner>/<repo>:latest and configure a Private Docker Registry
+#    or use public image access.
+
+services:
+  - type: web
+    name: insureai-web
+    env: docker
+    repo: https://github.com/<YOUR-USER>/<YOUR-REPO>   # replace with your repo
+    branch: main
+    plan: starter
+    disk: 10Gi
+    autoDeploy: true
+    buildCommand: ""
+    startCommand: "gunicorn -w 4 -b 0.0.0.0:8000 run:app"
+    # If deploying from GHCR instead of building on Render, uncomment and set dockerImage
+    # dockerImage: ghcr.io/<YOUR-USER>/<YOUR-REPO>:latest
+    envVars:
+      - key: MONGO_URI
+        value: '<YOUR_MONGO_URI>'
+        secure: true
+      - key: SECRET_KEY
+        value: '<YOUR_SECRET_KEY>'
+        secure: true
+      - key: ADMIN_EMAIL
+        value: 'admin@insurance.com'
+      - key: ADMIN_PASSWORD
+        value: '<YOUR_ADMIN_PASSWORD>'
+        secure: true
+      - key: UPLOAD_FOLDER
+        value: '/opt/render/project/src/static/uploads'
+
+# Notes:
+# - Replace placeholders above before creating the service in Render.
+# - If using GHCR images, create a Private Registry entry in Render and
+#   provide credentials so Render can pull from ghcr.io (or make the image public).
+# - To enable the GitHub Actions workflow to trigger redeploys, you'll need the
+#   Render service id and an API key (set them as GitHub secrets: RENDER_SERVICE_ID, RENDER_API_KEY).

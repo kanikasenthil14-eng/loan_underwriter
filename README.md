@@ -116,6 +116,109 @@ Open: http://localhost:5000
 | Admin | admin@insurance.com | Admin@123 |
 | Customer (sample) | rahul@example.com | Test@123 |
 
+## Deployment
+
+This repository includes deployment automation for Docker, GitHub Container Registry (GHCR), and Render.
+
+Overview of the recommended flow
+- Build a Docker image for the app and push it to GHCR.
+- Configure a Render Web Service to deploy either from the GitHub repo (Render builds) or pull the image from GHCR.
+- Use the included GitHub Actions workflow to automate build, push, and trigger Render deploys.
+
+Required preparatory steps
+- Ensure the ML model artifact exists before creating production images. Locally run:
+
+```bash
+python -m app.ml.train_model
+git add app/ml/*.joblib || true
+git commit -m "Add trained model for deployment" || true
+git push origin main
+```
+
+- Use a managed MongoDB for production (MongoDB Atlas) and obtain the connection string `MONGO_URI`.
+
+- Create these GitHub repository secrets (Settings → Secrets → Actions):
+        - `RENDER_API_KEY` — Render service API key (for triggering deploys)
+        - `RENDER_SERVICE_ID` — Render service id (the service to trigger)
+        - (optional) `GHCR_PAT` — personal access token with `packages:write` if you prefer a PAT instead of `GITHUB_TOKEN`
+
+Local Docker (quick test)
+
+```bash
+# build and run locally (exposes port 8000)
+docker build -t insureai:local .
+docker run --rm -p 8000:8000 \
+        -e MONGO_URI="mongodb://host.docker.internal:27017/insurance" \
+        -e SECRET_KEY="changeme" \
+        -e ADMIN_EMAIL="admin@insurance.com" \
+        -e ADMIN_PASSWORD="Admin@123" \
+        insureai:local
+```
+
+Automated CI/CD (GH Actions → GHCR → Render)
+
+1. The repository already contains the workflow `.github/workflows/ghcr-render-deploy.yml` which on push to `main` will:
+         - Build and push the Docker image to GHCR at `ghcr.io/<owner>/<repo>:latest`.
+         - Trigger a redeploy on Render using the Render Deploys API.
+
+2. Configure the workflow secrets in GitHub as noted above. If GHCR push fails using the built-in `GITHUB_TOKEN`, create a `GHCR_PAT` and update the workflow to use it.
+
+Render service configuration
+
+- Option A (Render builds from repo) — easiest:
+        - Create a new Web Service in Render and connect your GitHub repo.
+        - Environment: Docker
+        - Build Command: leave empty (Render uses your Dockerfile)
+        - Start Command: `gunicorn -w 4 -b 0.0.0.0:8000 run:app`
+        - Set Environment Variables in the Render dashboard (or in `render.yaml`):
+                - `MONGO_URI`, `SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `UPLOAD_FOLDER` (set to `/opt/render/project/src/static/uploads`)
+
+- Option B (Render pulls from GHCR image):
+        - Push to GHCR (workflow does this). In Render, create a Web Service from Private Docker Registry and point it to `ghcr.io/<owner>/<repo>:latest`.
+        - Provide registry credentials if the image is private (username = GitHub username, password = GHCR PAT).
+
+Notes about `render.yaml`:
+- `render.yaml` in the repo is a template that you can import into Render; edit the `repo` field and optional `dockerImage` field before importing.
+
+Verifying the deployment
+
+1. After a successful deploy, open the Render service URL. The health endpoint is available at `/api/health`.
+
+```bash
+curl https://<your-render-url>/api/health
+```
+
+Expected response: a small JSON confirming the app is alive.
+
+2. Check Render logs (Dashboard → Logs) for errors during startup. Common issues:
+         - Missing `MONGO_URI` or incorrect credentials.
+         - ML model file not present: create/train the model and commit it before building the image or configure the Docker build to train during image build (not recommended for long training jobs).
+
+3. Run a quick end-to-end smoke test (replace values):
+
+```bash
+# register a test user (example)
+curl -X POST https://<your-render-url>/auth/register -d "email=test@example.com&password=Test@123"
+
+# submit a minimal application via your app UI or the API
+```
+
+4. If using the GitHub Actions workflow, check Actions → ghcr-render-deploy for build logs and the final step that triggers Render.
+
+Troubleshooting
+- If GHCR push fails, inspect the Actions logs for authentication errors; add `GHCR_PAT` and update the login step to use it.
+- If Render build fails, check the Build and Service logs to see Docker build errors; common fixes are missing system packages or incompatible Python wheels (add `buildpack` or system deps in the Dockerfile).
+
+Security
+- Never commit secrets to the repo. Use GitHub Secrets and Render environment variables.
+
+Production recommendations
+- Use MongoDB Atlas for reliability.
+- Store uploaded documents in S3 or Azure Blob; Render's disk is not suitable for large or shared storage.
+- Store trained ML artifacts in object storage and load them during startup.
+
+
+
 ## AI Agent Pipeline
 
 ```

@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/kredpilot_ai
+      - SECRET_KEY=change-me
+      - ADMIN_EMAIL=admin@insurance.com
+      - ADMIN_PASSWORD=Admin@123
+    volumes:
+      - ./static/uploads:/app/static/uploads
+
+volumes:
+  mongo-data:
