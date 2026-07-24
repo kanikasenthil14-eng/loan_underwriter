@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Underwriting Report — {{ application.full_name }}</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; color: #1a1a2e; margin: 0; padding: 20px; background: #fff; }
+        .header { background: linear-gradient(135deg, #0a1628, #0d1b3e); color: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; }
+        .logo { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+        .report-title { font-size: 1.1rem; opacity: 0.8; }
+        .section { margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .section-header { background: #f0f4ff; padding: 12px 20px; font-weight: 600; color: #0a1628; border-bottom: 1px solid #e0e0e0; }
+        .section-body { padding: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .info-item { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-value { font-weight: 600; color: #1a1a2e; }
+        .decision-box { padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .approved { background: #d1fae5; border: 2px solid #10b981; color: #065f46; }
+        .rejected { background: #fee2e2; border: 2px solid #ef4444; color: #991b1b; }
+        .manual { background: #fef3c7; border: 2px solid #f59e0b; color: #92400e; }
+        .decision-title { font-size: 1.8rem; font-weight: 700; }
+        .stat-box { background: #f8faff; border: 1px solid #e0e8ff; border-radius: 6px; padding: 12px; text-align: center; }
+        .stat-val { font-size: 1.4rem; font-weight: 700; color: #0066ff; }
+        .stat-lbl { font-size: 0.75rem; color: #666; }
+        .flag-item { padding: 4px 0; color: #dc2626; font-size: 0.85rem; }
+        .condition-item { padding: 4px 0; color: #1a1a2e; font-size: 0.85rem; }
+        .footer { text-align: center; color: #666; font-size: 0.8rem; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
+        @media print { body { padding: 0; } .no-print { display: none; } }
+    </style>
+</head>
+<body>
+{% set app = application %}
+{% set dec = app.decision.final_decision if app.decision else 'Pending' %}
+{% set dec_display = 'Pending' if dec == 'Manual Review' else dec %}
+
+<div class="header">
+    <div class="logo">🛡️ InsureAI — Underwriting Report</div>
+    <div class="report-title">
+        Report ID: {{ app.report.report_id if app.report else 'N/A' }} |
+        Generated: {{ app.report.generated_at[:10] if app.report else 'N/A' }}
+    </div>
+</div>
+
+<!-- Decision -->
+<div class="decision-box {{ 'approved' if dec_display == 'Approved' else ('rejected' if dec_display == 'Rejected' else 'manual') }}">
+    <div class="decision-title">{{ dec_display }}</div>
+    <div>{{ app.decision.reason if app.decision else '' }}</div>
+    {% if app.decision %}<div style="font-size:0.9rem;margin-top:5px;">Confidence: {{ "%.0f"|format(app.decision.confidence * 100) }}%</div>{% endif %}
+</div>
+
+<!-- Detailed Reasons -->
+{% if app.decision and app.decision.detailed_reasons %}
+<div class="section">
+    <div class="section-header">Decision Reasoning</div>
+    <div class="section-body">
+        {% for reason in app.decision.detailed_reasons %}
+        <div class="info-item">
+            <div class="info-value" style="font-weight:400;font-size:0.85rem;">• {{ reason }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Applicant Info -->
+<div class="section">
+    <div class="section-header">Applicant Information</div>
+    <div class="section-body">
+        <div class="grid-2">
+            {% for label, value in [('Full Name', app.full_name), ('Age', app.age), ('Gender', app.gender), ('Email', app.email), ('Mobile', app.mobile), ('Address', app.address), ('Insurance Type', app.insurance_type|title), ('Loan Purpose', app.loan_purpose|title if app.loan_purpose else (app.loan_type|title if app.loan_type else 'N/A')), ('Submitted', app.submitted_at.strftime('%d %b %Y') if app.submitted_at else 'N/A')] %}
+            <div class="info-item"><div class="info-label">{{ label }}</div><div class="info-value">{{ value }}</div></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Financial Info -->
+<div class="section">
+    <div class="section-header">Financial Profile</div>
+    <div class="section-body">
+        <div class="grid-2">
+            {% for label, value in [('Occupation', app.occupation|title), ('Employment Status', app.employment_status|title), ('Annual Income', '₹' + "{:,.0f}".format(app.annual_income)), ('Credit Score', app.credit_score), ('Existing Loans', app.existing_loans), ('Previous Claims', app.previous_claims)] %}
+            <div class="info-item"><div class="info-label">{{ label }}</div><div class="info-value">{{ value }}</div></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Risk Summary -->
+{% if app.risk_score %}
+<div class="section">
+    <div class="section-header">Risk Analysis Summary</div>
+    <div class="section-body">
+        <div class="grid-4">
+            <div class="stat-box"><div class="stat-val">{{ app.risk_score.composite_score }}</div><div class="stat-lbl">Composite Score</div></div>
+            <div class="stat-box"><div class="stat-val">{{ app.credit_score }}</div><div class="stat-lbl">Credit Score</div><div class="stat-lbl" style="color:#0066ff;font-weight:600;font-size:0.7rem;">{{ app.financial_risk.credit_category if app.financial_risk else 'N/A' }}</div></div>
+            <div class="stat-box"><div class="stat-val">{{ app.fraud_detection.fraud_score if app.fraud_detection else 'N/A' }}</div><div class="stat-lbl">Fraud Score</div></div>
+            <div class="stat-box"><div class="stat-val">{{ app.doc_verification.score if app.doc_verification else 'N/A' }}</div><div class="stat-lbl">Doc Score</div></div>
+        </div>
+        <div style="margin-top:12px;"><strong>Risk Band:</strong> {{ app.risk_score.risk_band }}</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ML Analysis -->
+{% if app.ml_prediction %}
+<div class="section">
+    <div class="section-header">ML Model Analysis</div>
+    <div class="section-body">
+        <div class="grid-2">
+            <div class="info-item"><div class="info-label">Model</div><div class="info-value">{{ app.ml_prediction.model }}</div></div>
+            <div class="info-item"><div class="info-label">Prediction</div><div class="info-value">{{ app.ml_prediction.decision }}</div></div>
+            <div class="info-item"><div class="info-label">Confidence</div><div class="info-value">{{ "%.0f"|format(app.ml_prediction.confidence * 100) }}%</div></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Premium -->
+{% if app.premium and app.premium.status == 'Calculated' %}
+<div class="section">
+    <div class="section-header">Premium Details</div>
+    <div class="section-body">
+        <div class="grid-4">
+            <div class="stat-box"><div class="stat-val">₹{{ "{:,.0f}".format(app.premium.annual_premium) }}</div><div class="stat-lbl">Annual Premium</div></div>
+            <div class="stat-box"><div class="stat-val">₹{{ "{:,.0f}".format(app.premium.monthly_premium) }}</div><div class="stat-lbl">Monthly Premium</div></div>
+            <div class="stat-box"><div class="stat-val">₹{{ "{:,.0f}".format(app.premium.coverage_amount) }}</div><div class="stat-lbl">Coverage Amount</div></div>
+            <div class="stat-box"><div class="stat-val">{{ app.premium.discount_percentage }}%</div><div class="stat-lbl">Discount</div></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Conditions & Flags -->
+{% if app.decision and app.decision.conditions %}
+<div class="section">
+    <div class="section-header">Policy Conditions</div>
+    <div class="section-body">
+        {% for c in app.decision.conditions %}<div class="condition-item">• {{ c }}</div>{% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if app.fraud_detection and app.fraud_detection.flags %}
+<div class="section">
+    <div class="section-header">Fraud Detection Flags</div>
+    <div class="section-body">
+        {% for f in app.fraud_detection.flags %}<div class="flag-item">⚠ {{ f }}</div>{% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="footer">
+    This report was generated by InsureAI — Agentic AI for End-to-End Insurance Underwriting<br>
+    Application ID: {{ app._id }} | This is a system-generated report.
+</div>
+
+<div class="no-print" style="text-align:center;margin-top:20px;">
+    <button onclick="window.print()" style="background:#0066ff;color:white;border:none;padding:10px 30px;border-radius:6px;cursor:pointer;font-size:1rem;">
+        🖨️ Print / Save as PDF
+    </button>
+    <button onclick="window.close()" style="background:#666;color:white;border:none;padding:10px 30px;border-radius:6px;cursor:pointer;font-size:1rem;margin-left:10px;">
+        Close
+    </button>
+</div>
+</body>
+</html>

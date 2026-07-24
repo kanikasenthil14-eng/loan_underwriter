@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon-sm"><i class="fas fa-shield-alt"></i></div>
+            <span class="sidebar-brand">CredPilot</span>
+            <span class="badge bg-danger ms-1" style="font-size:0.6rem;">ADMIN</span>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">OVERVIEW</div>
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+            </a>
+            <div class="nav-section-label mt-3">MANAGEMENT</div>
+            <a href="{{ url_for('admin.applications') }}" class="nav-item {% if request.endpoint == 'admin.applications' %}active{% endif %}">
+                <i class="fas fa-file-alt"></i><span>Applications</span>
+            </a>
+            <a href="{{ url_for('admin.users') }}" class="nav-item {% if request.endpoint == 'admin.users' %}active{% endif %}">
+                <i class="fas fa-users"></i><span>Users</span>
+            </a>
+            <div class="nav-section-label mt-3">DATA</div>
+            <a href="{{ url_for('admin.export_csv') }}" class="nav-item">
+                <i class="fas fa-download"></i><span>Export CSV</span>
+            </a>
+            <a href="{{ url_for('api.get_stats') }}" class="nav-item" target="_blank">
+                <i class="fas fa-code"></i><span>API Stats</span>
+            </a>
+            <div class="nav-section-label mt-3">ACCOUNT</div>
+            <a href="{{ url_for('auth.logout') }}" class="nav-item">
+                <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+            </a>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar admin-avatar">A</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.name }}</div>
+                <div class="user-role text-warning">Administrator</div>
+            </div>
+        </div>
+    </aside>
+    <main class="main-content">
+        <div class="topbar">
+            <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <div class="topbar-title">{% block page_title %}Admin Dashboard{% endblock %}</div>
+            <div class="topbar-actions">
+                <a href="{{ url_for('admin.export_csv') }}" class="btn btn-outline-success btn-sm me-2">
+                    <i class="fas fa-download me-1"></i>Export CSV
+                </a>
+                <a href="{{ url_for('admin.applications') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-list me-1"></i>All Applications
+                </a>
+            </div>
+        </div>
+        <div class="content-area">
+            {% block page_content %}{% endblock %}
+        </div>
+    </main>
+</div>
+{% endblock %}

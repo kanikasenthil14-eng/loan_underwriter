@@ -1,0 +1,241 @@
+{% extends "admin/layout.html" %}
+{% block title %}Admin Dashboard — InsureAI{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+{% block page_content %}
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    {% set kpis = [
+        ('fa-file-alt','text-primary','Total Applications', stats.total, ''),
+        ('fa-check-circle','text-success','Approved', stats.approved, stats.approval_rate|string + '%'),
+        ('fa-times-circle','text-danger','Rejected', stats.rejected, stats.rejection_rate|string + '%'),
+        ('fa-clock','text-warning','Manual Review', stats.manual, ''),
+        ('fa-user-secret','text-danger','Fraud Flagged', stats.fraud_flagged, ''),
+        ('fa-users','text-info','Total Customers', stats.total_users, '')
+    ] %}
+    {% for icon, color, label, value, sub in kpis %}
+    <div class="col-sm-6 col-xl-2">
+        <div class="stat-card-dash">
+            <div class="stat-icon"><i class="fas {{ icon }} {{ color }}"></i></div>
+            <div class="stat-info">
+                <div class="stat-value {{ color }}">{{ value }}</div>
+                <div class="stat-label">{{ label }}</div>
+                {% if sub %}<div class="stat-sub {{ color }}">{{ sub }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Charts Row 1 -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card-dark">
+            <div class="card-dark-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>Monthly Application Trends</h6>
+                <span class="badge bg-primary">Last 6 Months</span>
+            </div>
+            <div class="card-dark-body">
+                <canvas id="monthlyChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h6 class="mb-0"><i class="fas fa-chart-pie me-2 text-primary"></i>Decision Distribution</h6>
+            </div>
+            <div class="card-dark-body">
+                <canvas id="decisionChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar me-2 text-warning"></i>Risk Score Distribution</h6>
+            </div>
+            <div class="card-dark-body">
+                <canvas id="riskChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-dark">
+            <div class="card-dark-header">
+                <h6 class="mb-0"><i class="fas fa-rupee-sign me-2 text-success"></i>Premium Revenue Analysis</h6>
+            </div>
+            <div class="card-dark-body text-center py-4">
+                <div class="revenue-display">
+                    <div class="revenue-amount">₹{{ "{:,.0f}".format(premium_data.total_revenue) }}</div>
+                    <div class="revenue-label">Total Premium Revenue</div>
+                    <div class="revenue-sub">From {{ premium_data.count }} approved policies</div>
+                </div>
+                <canvas id="revenueChart" height="120" class="mt-3"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Applications -->
+<div class="card-dark">
+    <div class="card-dark-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-clock me-2 text-primary"></i>Recent Applications</h6>
+        <a href="{{ url_for('admin.applications') }}" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-dark-body">
+        <div class="table-responsive">
+            <table class="table table-dark-custom">
+                <thead>
+                    <tr>
+                        <th>Applicant</th>
+                        <th>Type</th>
+                        <th>Risk Score</th>
+                        <th>Fraud Score</th>
+                        <th>Decision</th>
+                        <th>Premium</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in recent_applications %}
+                    <tr>
+                        <td>
+                            <div class="fw-600 text-white">{{ app.full_name }}</div>
+                            <div class="small text-secondary">{{ app.email }}</div>
+                        </td>
+                        <td>{{ app.insurance_type|title }}</td>
+                        <td>
+                            {% set rs = app.risk_score.composite_score if app.risk_score else 0 %}
+                            <span class="risk-badge risk-{{ 'low' if rs < 40 else ('medium' if rs < 65 else 'high') }}">{{ rs }}</span>
+                        </td>
+                        <td>
+                            {% set fs = app.fraud_detection.fraud_score if app.fraud_detection else 0 %}
+                            <span class="text-{{ 'success' if fs < 20 else ('warning' if fs < 40 else 'danger') }}">{{ fs }}</span>
+                        </td>
+                        <td>
+                            {% set dec = app.decision.final_decision if app.decision else 'Pending' %}
+                            <span class="badge-decision badge-{{ 'approved' if dec == 'Approved' else ('rejected' if dec == 'Rejected' else 'manual') }}">{{ dec }}</span>
+                        </td>
+                        <td>
+                            {% if app.premium and app.premium.annual_premium %}₹{{ "{:,.0f}".format(app.premium.annual_premium) }}{% else %}N/A{% endif %}
+                        </td>
+                        <td class="text-secondary small">{{ app.submitted_at.strftime('%d %b') if app.submitted_at else 'N/A' }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.view_application', app_id=app._id|string) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+const monthlyLabels = {{ monthly_data | map(attribute='label') | list | tojson }};
+const monthlyCounts = {{ monthly_data | map(attribute='count') | list | tojson }};
+const riskBands = {{ risk_dist | map(attribute='band') | list | tojson }};
+const riskCounts = {{ risk_dist | map(attribute='count') | list | tojson }};
+const decisionData = {
+    approved: {{ stats.approved }},
+    rejected: {{ stats.rejected }},
+    manual: {{ stats.manual }}
+};
+
+// Monthly Trend Chart
+new Chart(document.getElementById('monthlyChart'), {
+    type: 'line',
+    data: {
+        labels: monthlyLabels,
+        datasets: [{
+            label: 'Applications',
+            data: monthlyCounts,
+            borderColor: '#0066ff',
+            backgroundColor: 'rgba(0,102,255,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#0066ff',
+            pointRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#a0aec0' } } },
+        scales: {
+            x: { ticks: { color: '#a0aec0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#a0aec0' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+    }
+});
+
+// Decision Pie Chart
+new Chart(document.getElementById('decisionChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Approved', 'Rejected', 'Manual Review'],
+        datasets: [{
+            data: [decisionData.approved, decisionData.rejected, decisionData.manual],
+            backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { color: '#a0aec0', padding: 15 } } },
+        cutout: '65%'
+    }
+});
+
+// Risk Distribution Chart
+new Chart(document.getElementById('riskChart'), {
+    type: 'bar',
+    data: {
+        labels: riskBands.map(b => b.split(' - ')[1] || b),
+        datasets: [{
+            label: 'Applications',
+            data: riskCounts,
+            backgroundColor: ['#22c55e', '#84cc16', '#f59e0b', '#f97316', '#ef4444'],
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#a0aec0' }, grid: { display: false } },
+            y: { ticks: { color: '#a0aec0' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+    }
+});
+
+// Revenue Gauge
+new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Revenue'],
+        datasets: [{
+            data: [{{ premium_data.total_revenue }}],
+            backgroundColor: ['rgba(34,197,94,0.3)'],
+            borderColor: ['#22c55e'],
+            borderWidth: 2,
+            borderRadius: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { display: false }, y: { ticks: { color: '#a0aec0' }, grid: { color: 'rgba(255,255,255,0.05)' } } }
+    }
+});
+</script>
+{% endblock %}

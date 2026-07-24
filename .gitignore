@@ -1,0 +1,16 @@
+insurance_underwriting/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+env/
+.venv/
+instance/
+static/uploads/*
+!static/uploads/.gitkeep
+app/ml/underwriting_model.pkl
+app/ml/feature_columns.pkl
+*.log
+.DS_Store

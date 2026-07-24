@@ -1,0 +1,115 @@
+{% extends "customer/layout.html" %}
+{% block title %}My Dashboard — CredPilot{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+{% block page_content %}
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-dash">
+            <div class="stat-icon bg-primary-soft"><i class="fas fa-file-alt text-primary"></i></div>
+            <div class="stat-info">
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Applications</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-dash">
+            <div class="stat-icon bg-success-soft"><i class="fas fa-check-circle text-success"></i></div>
+            <div class="stat-info">
+                <div class="stat-value text-success">{{ stats.approved }}</div>
+                <div class="stat-label">Approved</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-dash">
+            <div class="stat-icon bg-danger-soft"><i class="fas fa-times-circle text-danger"></i></div>
+            <div class="stat-info">
+                <div class="stat-value text-danger">{{ stats.rejected }}</div>
+                <div class="stat-label">Rejected</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card-dash">
+            <div class="stat-icon bg-warning-soft"><i class="fas fa-clock text-warning"></i></div>
+            <div class="stat-info">
+                <div class="stat-value text-warning">{{ stats.pending }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Applications Table -->
+<div class="card-dark">
+    <div class="card-dark-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>My Applications</h6>
+        <a href="{{ url_for('customer.apply') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Apply Now
+        </a>
+    </div>
+    <div class="card-dark-body">
+        {% if applications %}
+        <div class="table-responsive">
+            <table class="table table-dark-custom">
+                <thead>
+                    <tr>
+                        <th>Application ID</th>
+                        <th>Loan Purpose / Credit Score</th>
+                        <th>Submitted</th>
+                        <th>Risk Score</th>
+                        <th>Decision</th>
+                        <th>Premium</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td><code class="text-info">#{{ app._id|string|truncate(8,True,'') }}</code></td>
+                        <td>
+                            <div>{{ app.loan_purpose|title if app.loan_purpose else (app.loan_type|title if app.loan_type else 'N/A') }}</div>
+                            <div class="text-secondary small">Credit Score: {{ app.credit_score if app.credit_score is not none else 'N/A' }}</div>
+                        </td>
+                        <td>{{ app.submitted_at.strftime('%d %b %Y') if app.submitted_at else 'N/A' }}</td>
+                        <td>
+                            {% set score = app.risk_score.composite_score if app.risk_score else 0 %}
+                            <div class="risk-badge risk-{{ 'low' if score < 40 else ('medium' if score < 65 else 'high') }}">
+                                {{ score }}
+                            </div>
+                        </td>
+                        <td>
+                            {% set dec = app.decision.final_decision if app.decision else app.status %}
+                            {% set dec_display = 'Pending' if dec == 'Manual Review' else (dec or 'Pending') %}
+                            <span class="badge-decision badge-{{ 'approved' if dec_display == 'Approved' else ('rejected' if dec_display == 'Rejected' else 'manual') }}">
+                                {{ dec_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if app.premium and app.premium.emi %}
+                                ₹{{ "{:,.0f}".format(app.premium.emi) }}/mo
+                            {% else %}N/A{% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('customer.view_application', app_id=app._id|string) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-file-medical fa-3x text-secondary mb-3"></i>
+            <h6 class="text-secondary">No applications yet</h6>
+            <a href="{{ url_for('customer.apply') }}" class="btn btn-primary mt-2">Submit Your First Application</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

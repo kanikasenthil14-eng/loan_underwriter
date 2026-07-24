@@ -1,0 +1,228 @@
+{% extends "customer/layout.html" %}
+{% block title %}New Application — CredPilot{% endblock %}
+{% block page_title %}Submit Loan Application{% endblock %}
+{% block page_content %}
+
+<div class="row justify-content-center">
+<div class="col-xl-10">
+
+<!-- Progress Steps -->
+<div class="step-progress mb-4">
+    <div class="step-item active" id="step-indicator-1"><span class="step-circle">1</span><span class="step-label">Personal Info</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-indicator-2"><span class="step-circle">2</span><span class="step-label">Financial Details</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-indicator-3"><span class="step-circle">3</span><span class="step-label">Documents</span></div>
+    <div class="step-line"></div>
+    <div class="step-item" id="step-indicator-4"><span class="step-circle">4</span><span class="step-label">Review & Submit</span></div>
+</div>
+
+<form method="POST" action="{{ url_for('customer.apply') }}" enctype="multipart/form-data" id="applicationForm">
+
+<!-- Step 1: Personal Info -->
+<div class="form-step" id="step-1">
+    <div class="card-dark">
+        <div class="card-dark-header">
+            <h6 class="mb-0"><i class="fas fa-user me-2 text-primary"></i>Personal Information</h6>
+        </div>
+        <div class="card-dark-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" name="full_name" class="form-control form-control-dark" placeholder="John Doe" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Age <span class="text-danger">*</span></label>
+                    <input type="number" name="age" class="form-control form-control-dark" min="18" max="80" placeholder="30" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Gender <span class="text-danger">*</span></label>
+                    <select name="gender" class="form-select form-control-dark" required>
+                        <option value="">Select</option>
+                        <option>Male</option><option>Female</option><option>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" name="email" class="form-control form-control-dark" placeholder="you@example.com" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                    <input type="tel" name="mobile" class="form-control form-control-dark" pattern="[6-9][0-9]{9}" placeholder="9876543210" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Loan Purpose <span class="text-danger">*</span></label>
+                    <select name="loan_purpose" class="form-select form-control-dark" required>
+                        <option value="personal" {% if loan_type == 'personal' %}selected{% endif %}>Personal Loan</option>
+                        <option value="home" {% if loan_type == 'home' %}selected{% endif %}>Home Loan</option>
+                        <option value="vehicle" {% if loan_type == 'vehicle' %}selected{% endif %}>Vehicle Loan</option>
+                        <option value="education" {% if loan_type == 'education' %}selected{% endif %}>Education Loan</option>
+                        <option value="business" {% if loan_type == 'business' %}selected{% endif %}>Business Loan</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Address <span class="text-danger">*</span></label>
+                    <textarea name="address" class="form-control form-control-dark" rows="2" placeholder="Full residential address" required></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-end mt-3">
+        <button type="button" class="btn btn-primary px-4" onclick="nextStep(1)">Next <i class="fas fa-arrow-right ms-2"></i></button>
+    </div>
+</div>
+
+<!-- Step 2: Financial Details -->
+<div class="form-step d-none" id="step-2">
+    <div class="card-dark">
+        <div class="card-dark-header">
+            <h6 class="mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>Financial Information</h6>
+        </div>
+        <div class="card-dark-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Occupation <span class="text-danger">*</span></label>
+                    <select name="occupation" class="form-select form-control-dark" required>
+                        <option value="">Select Occupation</option>
+                        {% for occ in ['Government Employee','Doctor','Engineer','Teacher','Lawyer','Accountant','Nurse','Banker','Self-Employed','Business Owner','Freelancer','Driver','Construction Worker','Farmer','Student','Retired','Unemployed','Other'] %}
+                        <option value="{{ occ.lower() }}">{{ occ }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Employment Status <span class="text-danger">*</span></label>
+                    <select name="employment_status" class="form-select form-control-dark" required>
+                        <option value="">Select Status</option>
+                        <option value="employed">Employed</option>
+                        <option value="self-employed">Self-Employed</option>
+                        <option value="part-time">Part-Time</option>
+                        <option value="contract">Contract</option>
+                        <option value="unemployed">Unemployed</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Annual Income (₹) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" name="annual_income" class="form-control form-control-dark" min="0" placeholder="500000" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Credit Score <span class="text-danger">*</span></label>
+                    <input type="number" name="credit_score" class="form-control form-control-dark" min="300" max="900" placeholder="700" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Loan Amount (₹) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" name="loan_amount" class="form-control form-control-dark" min="10000" placeholder="500000" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Loan Tenure (Months) <span class="text-danger">*</span></label>
+                    <input type="number" name="loan_tenure" class="form-control form-control-dark" min="6" max="360" placeholder="60" required>
+                    <div class="form-text text-secondary">Range: 6 - 360 months</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Number of Existing Loans</label>
+                    <input type="number" name="existing_loans" class="form-control form-control-dark" min="0" max="20" value="0">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between mt-3">
+        <button type="button" class="btn btn-outline-secondary px-4" onclick="prevStep(2)"><i class="fas fa-arrow-left me-2"></i>Back</button>
+        <button type="button" class="btn btn-primary px-4" onclick="nextStep(2)">Next <i class="fas fa-arrow-right ms-2"></i></button>
+    </div>
+</div>
+
+<!-- Step 3: Documents -->
+<div class="form-step d-none" id="step-3">
+    <div class="card-dark">
+        <div class="card-dark-header">
+            <h6 class="mb-0"><i class="fas fa-file-upload me-2 text-primary"></i>Document Upload</h6>
+        </div>
+        <div class="card-dark-body">
+            <div class="row g-4">
+                {% for field, label, icon in [('aadhaar','Aadhaar Card','fa-id-card'),('pan','PAN Card','fa-credit-card'),('income_proof','Income Proof','fa-file-invoice-dollar'),('passport_photo','Passport Photo','fa-camera')] %}
+                <div class="col-md-4">
+                    <div class="upload-zone" id="zone-{{ field }}" onclick="document.getElementById('{{ field }}').click()">
+                        <i class="fas {{ icon }} fa-2x text-primary mb-2"></i>
+                        <h6 class="text-white mb-1">{{ label }}</h6>
+                        <p class="text-secondary small mb-2">Click to upload</p>
+                        <span class="badge bg-secondary">JPG, PNG, PDF</span>
+                        <div class="upload-preview mt-2" id="preview-{{ field }}"></div>
+                    </div>
+                    <input type="file" name="{{ field }}" id="{{ field }}" class="d-none" accept=".jpg,.jpeg,.png,.pdf"
+                           onchange="showPreview(this, 'preview-{{ field }}', 'zone-{{ field }}')">
+                </div>
+                {% endfor %}
+            </div>
+            <div class="alert alert-info mt-3 small">
+                <i class="fas fa-info-circle me-2"></i>
+                Documents are processed using OCR for verification. Supported formats: JPG, PNG, PDF (max 16MB each).
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between mt-3">
+        <button type="button" class="btn btn-outline-secondary px-4" onclick="prevStep(3)"><i class="fas fa-arrow-left me-2"></i>Back</button>
+        <button type="button" class="btn btn-primary px-4" onclick="nextStep(3)">Review <i class="fas fa-arrow-right ms-2"></i></button>
+    </div>
+</div>
+
+<!-- Step 4: Review & Submit -->
+<div class="form-step d-none" id="step-4">
+    <div class="card-dark">
+        <div class="card-dark-header">
+            <h6 class="mb-0"><i class="fas fa-check-double me-2 text-primary"></i>Review & Submit</h6>
+        </div>
+        <div class="card-dark-body">
+            <div id="reviewSummary" class="row g-3"></div>
+            <div class="alert alert-warning mt-3 small">
+                <i class="fas fa-robot me-2"></i>
+                <strong>AI Processing:</strong> After submission, 7 AI agents will analyze your application. This may take 15-30 seconds.
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between mt-3">
+        <button type="button" class="btn btn-outline-secondary px-4" onclick="prevStep(4)"><i class="fas fa-arrow-left me-2"></i>Back</button>
+        <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
+            <i class="fas fa-paper-plane me-2"></i>Submit Application
+        </button>
+    </div>
+</div>
+
+</form>
+</div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#1a2035;border:1px solid rgba(255,255,255,0.1);">
+            <div class="modal-body text-center py-5">
+                <div class="ai-processing-animation mb-4">
+                    <div class="pulse-ring"></div>
+                    <i class="fas fa-brain fa-3x text-primary"></i>
+                </div>
+                <h5 class="text-white mb-2">AI Agents Processing...</h5>
+                <p class="text-secondary small mb-4">Please wait while our AI agents analyze your application</p>
+                <div class="agent-steps">
+                    {% for agent in ['Document Verification','Financial Risk Assessment','Fraud Detection','Risk Scoring','ML Prediction','Decision Making','Loan Terms Calculation'] %}
+                    <div class="agent-step" id="agent-{{ loop.index }}">
+                        <i class="fas fa-circle-notch fa-spin text-primary me-2"></i>
+                        <span class="text-secondary">{{ agent }} Agent</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/apply.js') }}"></script>
+{% endblock %}
