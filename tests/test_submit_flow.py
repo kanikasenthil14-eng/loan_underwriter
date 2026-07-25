@@ -28,6 +28,7 @@ class SubmitFlowTestCase(unittest.TestCase):
         apply_page = self.client.get('/customer/apply')
         self.assertEqual(apply_page.status_code, 200)
         self.assertIn('form="applicationForm"', apply_page.get_data(as_text=True))
+        self.assertIn('novalidate', apply_page.get_data(as_text=True))
 
         submit_response = self.client.post('/customer/apply', data={
             'full_name': 'Test Applicant',

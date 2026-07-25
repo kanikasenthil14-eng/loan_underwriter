@@ -109,6 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!form) return;
 
+    if (submitBtn) {
+        submitBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            form.requestSubmit();
+        });
+    }
+
     form.addEventListener('submit', () => {
         if (submitBtn) {
             submitBtn.disabled = true;
